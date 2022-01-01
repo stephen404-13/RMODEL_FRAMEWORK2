@@ -16,6 +16,7 @@ hyper_params_svm = {
     'pipeline__polynomialfeatures__degree': [2, 3, 4],
     'pipeline__selectkbest__k': range(4, 100)
 }
+
 hyper_params_logistic = {
     'logisticregression__penalty': ['l1', 'l2'],
     'logisticregression__C': [1, 10, 100, 1000],

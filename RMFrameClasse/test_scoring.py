@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     dataset = preprocessor.dataFrame
 
-    preprocessor = preprocessor.pipelinePreprocessing()
+    preprocessor = preprocessor.pipeline_preprocessing()
 
     ###################### INITIALISATION DES Algorithmes NECESSAIRES POUR LE SCORING #################
 

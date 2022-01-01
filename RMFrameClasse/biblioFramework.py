@@ -10,18 +10,23 @@ import os.path
 
 
 ##===================PRETRAITEMENT DES DONNEES
-from sklearn.compose import make_column_transformer
+from sklearn.compose import make_column_transformer # applique les transformation sur les données
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
-from sklearn.pipeline import make_pipeline
-from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.pipeline import make_pipeline #construire un pipeline
+from sklearn.feature_selection import SelectKBest, f_classif 
+    # SelectKBest : selectionneles meilleurs variables en effectuant un test d'independace entre les vairables, 
+    # f_classif : méthode de test qui est utilisé, on pouvait aususi bien utilisé la métdoe de KhiDeux
 from sklearn.preprocessing import PolynomialFeatures
+    #pour rendre creer une fonctions polynomiale pour un jeu de données non lineairement separable
 from sklearn.compose import make_column_selector
 from sklearn.model_selection import train_test_split
 
 
 ##===================BIBLIOTHEQUE POUR POUR LA MESURE DE PERFORMENCE DU MODEL L'OPTIMISATION DES HYPERPARAMETRES
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV #Ajusteme du modele à travers la rechehche d'hyperparametre approprié au modele d'apprentissage supercisé
+    #GridSearchCV : meilleur hyperparamtre pour le modele
+    #RandomSearchCV : n_iter < 100 pour de meilleur performance
 from sklearn.metrics import f1_score, confusion_matrix, classification_report
 from sklearn.model_selection import learning_curve
 from sklearn.metrics import accuracy_score
@@ -87,50 +92,44 @@ class DataImport:
 ##===================CLASSE D'ACQUISION DES DONNEES====================#
 class Acquisision:
 
-    def __init__(self,dataFrame):
+    def __init__(self,dataFrame, target_name):
         self.dataFrame = dataFrame
+        self.target_name =''
         self.target =''
+        self.features =''
         self.columns = ''
         self.values = ''
+        self.split_data()
 
-    def split_datas(self,df, target='Loan_Status'):
-        X = df.drop(target, axis=1)
-        y = df[target]
-        self.target = y
-        return X, y
+    def split_data(self,df):
+        self.features = df.drop(self.target_name, axis=1)
+        self.target = df[self.target_name]
 
     def separation_data(self):
         num_data = []
         cat_data = []
-        donneeVariable = self.apply_split(self.dataFrame)[0]
-        for i, c in enumerate(donneeVariable.dtypes):
+        X = self.features
+        for i, c in enumerate(X.dtypes):
             if c == object:
-                cat_data.append(donneeVariable.iloc[:, i])
+                cat_data.append(X.iloc[:, i])
             else:
-                num_data.append(donneeVariable.iloc[:, i])
+                num_data.append(X.iloc[:, i])
         cat_data = pd.DataFrame(cat_data)
         num_data = pd.DataFrame(num_data)
         return cat_data.transpose(), num_data.transpose()
 
-    def apply_split(self,df):
-        X, y_ = self.split_datas(df)
-        #target = pd.DataFrame(y).columns
-        return X,y_
-
-    def apply_separation_data(self,df):
-        X = self.split_datas(df)[0]
+    def apply_separation_data(self, df):
+        self.split_data(df)[0]
         categorical_data, numerical_data = self.separation_data()
         categorical_features = list(categorical_data.columns)
         numerical_features = list(numerical_data.columns)
-        return numerical_features,categorical_features
+        return numerical_features, categorical_features
 
     def encodage_label(self):
-        liste = self.apply_split(self.dataFrame)
-        y_ = liste[1]
-        X = liste[0]
+        X, y = self.features, self.target
         encodage = LabelEncoder()
-        y = encodage.fit_transform(y_)
-        y = pd.DataFrame({"Loan_Status": y})
+        y = encodage.fit_transform(y)
+        y = pd.DataFrame({self.target_name: y})
         #en remplace  la variable target par la variable encoddé
         df = pd.concat([X, y], axis=1)
         self.dataFrame = df
@@ -139,66 +138,65 @@ class Acquisision:
     def train_test_set(self,test_size=0.3):
         df  = self.dataFrame
         trainset, testset = train_test_split(self.dataFrame, test_size=test_size, random_state=0)
-        X_train, y_train = self.split_datas(trainset)
-        X_test, y_test = self.split_datas(testset)
+        X_train, y_train = self.split_data(trainset)
+        X_test, y_test = self.split_data(testset)
         return list([X_train, y_train]),list([X_test, y_test])
 
     def matrix_corelation(self):
         import matplotlib.pyplot as plt
         import seaborn as sns
 
-        sns_plot = sns.pairplot(self.dataFrame, hue='Loan_Status', height=2.5)
+        sns_plot = sns.pairplot(self.dataFrame, hue=self.target_name, height=2.5)
         plt.savefig('output.png')
-
-
 
 
 
 ##=================== CLASSE  DE PRETRAITEMENT DES DONNEES ====================#
 class PreprocessingData(Acquisision):
 
-    def __init__(self,dataset):
-        super().__init__(dataset)
+    def __init__(self, dataset, target_name):
+        super().__init__(dataset, target_name)
         self.numerical_features = self.apply_separation_data(self.dataFrame)[0]
         self.categorical_features = self.apply_separation_data(self.dataFrame)[1]
 
-    def preprocessingVariableNumerique(self, strategy_val_manquante='mean', methode_encodage=StandardScaler()):
-        numerical_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_encodage)
+    def preprocessing_variable_numerique(self, strategy_val_manquante='mean', methode_mise_echelle=StandardScaler()):
+        numerical_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_mise_echelle)
         return numerical_pipeline
 
     ## strategie de prétraitement des valeurs  catégorielles
-    def preprocessingVariableCategoriel(self, strategy_val_manquante='most_frequent',methode_normalisation=OneHotEncoder()):
+    def preprocessing_variable_categoriel(self, strategy_val_manquante='most_frequent',methode_normalisation=OneHotEncoder()):
         categoriel_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_normalisation)
         return categoriel_pipeline
 
     ##  appliquer le strategie sur les variables
-    def preprocessingVariable(self, numerical_features, categorical_features):
-        preprocessingVariableNumerique1 = self.preprocessingVariableNumerique(strategy_val_manquante='mean',
+    def preprocessing_variable(self, numerical_features, categorical_features):
+        preprocessing_variable_numerique_ = self.preprocessing_variable_numerique(strategy_val_manquante='mean',
                                                                               methode_encodage=StandardScaler())
 
-        preprocessingVariableCategoriel1 = self.preprocessingVariableCategoriel(strategy_val_manquante='most_frequent',
+        preprocessing_variable_categoriel_ = self.preprocessing_variable_categoriel(strategy_val_manquante='most_frequent',
                                                                                 methode_normalisation=OneHotEncoder())
 
-        preprocessorVar = make_column_transformer((preprocessingVariableNumerique1, numerical_features),
-                                                  (preprocessingVariableCategoriel1, categorical_features),
+        preprocessor_variable = make_column_transformer((preprocessing_variable_numerique_, numerical_features),
+                                                  (preprocessing_variable_categoriel_, categorical_features),
                                                   )
 
-        return preprocessorVar
+        return preprocessor_variable
 
 
     ## Pipeline final de prétraitement des données (include polynomial features and select best Variables)
-    def pipelinePreprocessing(self, methode_selectionVariable=SelectKBest(f_classif, k=10)):
-        preprocessingVariable1 = self.preprocessingVariable(self.numerical_features, self.categorical_features)
-        preprocessor = make_pipeline(preprocessingVariable1, PolynomialFeatures(2, include_bias=False),
-                                     methode_selectionVariable)
+    def pipeline_preprocessing(self, methode_selection_variable=SelectKBest(f_classif, k=10)):
+        preprocessing_variable_ = self.preprocessing_variable(self.numerical_features, self.categorical_features)
+
+        preprocessor = make_pipeline(preprocessing_variable_, PolynomialFeatures(2, include_bias=False),
+                                     methode_selection_variable)
         return preprocessor
 
-    def transfom(self):
+    def transfom(self): # juste pour tester
         self.encodage_label()
-        train,test = self.train_test_set()
+        train, test = self.train_test_set()
         X_train,y_train = train
         #print(X_train,y_train)
-        resultat = self.pipelinePreprocessing(methode_selectionVariable=SelectKBest(f_classif, k=10))
+        resultat = self.pipeline_preprocessing(methode_selection_variable=SelectKBest(f_classif, k=10))
 
 
         #print(pd.DataFrame(resultat.fit_transform(X_train, y_train)))
@@ -236,10 +234,12 @@ class RModel_i:
 
 
 
-class RMFrammeClassification(RModel_i,PreprocessingData):
-
+class RMFrammeClassification(RModel_i, PreprocessingData):
+    
     def __init__(self, listeModel,dataset):
+        """
 
+        """
         super().__init__(dataset)
 
         train_set, test_set = self.train_test_set()
@@ -281,11 +281,10 @@ class RMFrammeClassification(RModel_i,PreprocessingData):
     # Puis renvoie un dictionnaire contenant tous les modèles ainsi que leurs scores respectifs
 
     def evalModels(self):
-        resultat_dico_models = {}
+        precision_dico_models = {}
         for name, model in self.models.items():
-            precision = self.evaluerModel(model[0])
-            resultat_dico_models[name] = precision
-        return resultat_dico_models
+            precision_dico_models[name] = self.evaluerModel(model[0])
+        return precision_dico_models
 
     # Fonction qui permet de faire la comparaison entre les modèles entrainés et retourne celui ayant la meilleure
     # performance.
@@ -364,7 +363,7 @@ if __name__ == "__main__":
 
     preprocessor.encodage_label()
 
-    preprocessor = preprocessor.pipelinePreprocessing()
+    preprocessor = preprocessor.pipeline_preprocessing()
 
     #print(preprocessor)
 
