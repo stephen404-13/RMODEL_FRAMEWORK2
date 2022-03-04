@@ -10,32 +10,25 @@ import os.path
 
 
 ##===================PRETRAITEMENT DES DONNEES
-from sklearn.compose import make_column_transformer # applique les transformation sur les données
+from sklearn.compose import make_column_transformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
-from sklearn.pipeline import make_pipeline #construire un pipeline
-from sklearn.feature_selection import SelectKBest, f_classif 
-    # SelectKBest : selectionneles meilleurs variables en effectuant un test d'independace entre les vairables, 
-    # f_classif : méthode de test qui est utilisé, on pouvait aususi bien utilisé la métdoe de KhiDeux
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import PolynomialFeatures
-    #pour rendre creer une fonctions polynomiale pour un jeu de données non lineairement separable
 from sklearn.compose import make_column_selector
 from sklearn.model_selection import train_test_split
 
 
 ##===================BIBLIOTHEQUE POUR POUR LA MESURE DE PERFORMENCE DU MODEL L'OPTIMISATION DES HYPERPARAMETRES
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV #Ajusteme du modele à travers la rechehche d'hyperparametre approprié au modele d'apprentissage supercisé
-    #GridSearchCV : meilleur hyperparamtre pour le modele
-    #RandomSearchCV : n_iter < 100 pour de meilleur performance
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import f1_score, confusion_matrix, classification_report
-from sklearn.model_selection import learning_curve
+#from sklearn.model_selection import learning_curve
 from sklearn.metrics import accuracy_score
+
 
 ##=================== Visualisation
 import  seaborn as sns
-
-##===================LIEN DU FICHIER DE TEST====================#
-source = r'train_u6lujuX_CVtuZ9i.csv'
 
 
 ##=================== CLASS D'IMPORTATION DES DONNEES ====================#
@@ -92,44 +85,54 @@ class DataImport:
 ##===================CLASSE D'ACQUISION DES DONNEES====================#
 class Acquisision:
 
-    def __init__(self,dataFrame, target_name):
+    def __init__(self,dataFrame,target):
         self.dataFrame = dataFrame
-        self.target_name =''
-        self.target =''
-        self.features =''
+        self.target = target
+        self.X = ''
         self.columns = ''
         self.values = ''
-        self.split_data()
 
-    def split_data(self,df):
-        self.features = df.drop(self.target_name, axis=1)
-        self.target = df[self.target_name]
+    def split_datas(self,df): #update
+        target = self.target
+        X = df.drop(target, axis=1)
+        self.X = X
+        y = df[target]
+        #self.target = y
+        return X, y
 
     def separation_data(self):
         num_data = []
         cat_data = []
-        X = self.features
-        for i, c in enumerate(X.dtypes):
+        donneeVariable = self.apply_split(self.dataFrame)[0]
+        for i, c in enumerate(donneeVariable.dtypes):
             if c == object:
-                cat_data.append(X.iloc[:, i])
+                cat_data.append(donneeVariable.iloc[:, i])
             else:
-                num_data.append(X.iloc[:, i])
+                num_data.append(donneeVariable.iloc[:, i])
         cat_data = pd.DataFrame(cat_data)
         num_data = pd.DataFrame(num_data)
         return cat_data.transpose(), num_data.transpose()
 
-    def apply_separation_data(self, df):
-        self.split_data(df)[0]
+    def apply_split(self,df):
+        X, y_ = self.split_datas(df)
+        #target = pd.DataFrame(y).columns
+        return X,y_
+
+    def apply_separation_data(self,df):
+        X = self.split_datas(df)[0]
         categorical_data, numerical_data = self.separation_data()
         categorical_features = list(categorical_data.columns)
         numerical_features = list(numerical_data.columns)
-        return numerical_features, categorical_features
+        return numerical_features,categorical_features
 
     def encodage_label(self):
-        X, y = self.features, self.target
+        target_name = self.target
+        liste = self.apply_split(self.dataFrame)
+        y_ = liste[1]
+        X = liste[0]
         encodage = LabelEncoder()
-        y = encodage.fit_transform(y)
-        y = pd.DataFrame({self.target_name: y})
+        y = encodage.fit_transform(y_)
+        y = pd.DataFrame({target_name: y})
         #en remplace  la variable target par la variable encoddé
         df = pd.concat([X, y], axis=1)
         self.dataFrame = df
@@ -138,65 +141,65 @@ class Acquisision:
     def train_test_set(self,test_size=0.3):
         df  = self.dataFrame
         trainset, testset = train_test_split(self.dataFrame, test_size=test_size, random_state=0)
-        X_train, y_train = self.split_data(trainset)
-        X_test, y_test = self.split_data(testset)
+        X_train, y_train = self.split_datas(trainset)
+        X_test, y_test = self.split_datas(testset)
         return list([X_train, y_train]),list([X_test, y_test])
 
     def matrix_corelation(self):
+        target_name = self.target
         import matplotlib.pyplot as plt
         import seaborn as sns
-
-        sns_plot = sns.pairplot(self.dataFrame, hue=self.target_name, height=2.5)
+        sns_plot = sns.pairplot(self.dataFrame, hue=target_name, height=2.5)
         plt.savefig('output.png')
+
 
 
 
 ##=================== CLASSE  DE PRETRAITEMENT DES DONNEES ====================#
 class PreprocessingData(Acquisision):
 
-    def __init__(self, dataset, target_name):
-        super().__init__(dataset, target_name)
+    def __init__(self,dataset,target):
+        super().__init__(dataset,target)
         self.numerical_features = self.apply_separation_data(self.dataFrame)[0]
         self.categorical_features = self.apply_separation_data(self.dataFrame)[1]
 
-    def preprocessing_variable_numerique(self, strategy_val_manquante='mean', methode_mise_echelle=StandardScaler()):
-        numerical_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_mise_echelle)
+    def preprocessingVariableNumerique(self, strategy_val_manquante='mean', methode_normalisation=StandardScaler()):
+        numerical_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_normalisation)
         return numerical_pipeline
 
     ## strategie de prétraitement des valeurs  catégorielles
-    def preprocessing_variable_categoriel(self, strategy_val_manquante='most_frequent',methode_normalisation=OneHotEncoder()):
-        categoriel_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_normalisation)
+    def preprocessingVariableCategoriel(self, strategy_val_manquante='most_frequent',methode_encodage=OneHotEncoder()):
+        categoriel_pipeline = make_pipeline(SimpleImputer(strategy=strategy_val_manquante), methode_encodage)
         return categoriel_pipeline
 
     ##  appliquer le strategie sur les variables
-    def preprocessing_variable(self, numerical_features, categorical_features):
-        preprocessing_variable_numerique_ = self.preprocessing_variable_numerique(strategy_val_manquante='mean',
-                                                                              methode_encodage=StandardScaler())
+    def preprocessingVariable(self, numerical_features, categorical_features):
+        preprocessingVariableNumerique1 = self.preprocessingVariableNumerique()
 
-        preprocessing_variable_categoriel_ = self.preprocessing_variable_categoriel(strategy_val_manquante='most_frequent',
-                                                                                methode_normalisation=OneHotEncoder())
+        preprocessingVariableCategoriel1 = self.preprocessingVariableCategoriel()
 
-        preprocessor_variable = make_column_transformer((preprocessing_variable_numerique_, numerical_features),
-                                                  (preprocessing_variable_categoriel_, categorical_features),
+        preprocessorVar = make_column_transformer((preprocessingVariableNumerique1, numerical_features),
+                                                  (preprocessingVariableCategoriel1, categorical_features),
                                                   )
 
-        return preprocessor_variable
+        return preprocessorVar
 
 
     ## Pipeline final de prétraitement des données (include polynomial features and select best Variables)
-    def pipeline_preprocessing(self, methode_selection_variable=SelectKBest(f_classif, k=10)):
-        preprocessing_variable_ = self.preprocessing_variable(self.numerical_features, self.categorical_features)
+    def pipelinePreprocessing(self, methode_selectionVariable=SelectKBest(f_classif, k=10)):
 
-        preprocessor = make_pipeline(preprocessing_variable_, PolynomialFeatures(2, include_bias=False),
-                                     methode_selection_variable)
+        preprocessingVariable1 = self.preprocessingVariable(self.numerical_features, self.categorical_features)
+
+        preprocessor = make_pipeline(preprocessingVariable1, PolynomialFeatures(2, include_bias=False),
+                                     methode_selectionVariable)
         return preprocessor
 
-    def transfom(self): # juste pour tester
+    def transfom(self):
         self.encodage_label()
-        train, test = self.train_test_set()
+        train,test = self.train_test_set()
         X_train,y_train = train
         #print(X_train,y_train)
-        resultat = self.pipeline_preprocessing(methode_selection_variable=SelectKBest(f_classif, k=10))
+        resultat = self.pipelinePreprocessing(methode_selectionVariable=SelectKBest(f_classif, k=10))
 
 
         #print(pd.DataFrame(resultat.fit_transform(X_train, y_train)))
@@ -234,13 +237,11 @@ class RModel_i:
 
 
 
-class RMFrammeClassification(RModel_i, PreprocessingData):
-    
-    def __init__(self, listeModel,dataset):
-        """
+class RMFrammeClassification(RModel_i,PreprocessingData):
 
-        """
-        super().__init__(dataset)
+    def __init__(self, listeModel,dataset,target):
+
+        super().__init__(dataset,target)
 
         train_set, test_set = self.train_test_set()
         self.models = listeModel
@@ -283,7 +284,8 @@ class RMFrammeClassification(RModel_i, PreprocessingData):
     def evalModels(self):
         precision_dico_models = {}
         for name, model in self.models.items():
-            precision_dico_models[name] = self.evaluerModel(model[0])
+            precision = self.evaluerModel(model[0])
+            precision_dico_models[name] = precision
         return precision_dico_models
 
     # Fonction qui permet de faire la comparaison entre les modèles entrainés et retourne celui ayant la meilleure
@@ -300,27 +302,64 @@ class RMFrammeClassification(RModel_i, PreprocessingData):
 
     # optimisation du modèle le plus performant
     def optimisationHyperParam(self, scoring='f1', cv=10):
+
         model_algo = self.best_model
-        grid = RandomizedSearchCV(self.models[model_algo][0], self.models[model_algo][1], scoring=scoring, cv=cv, n_iter=40)
+        grid = RandomizedSearchCV(self.models[model_algo][0], self.models[model_algo][1], scoring=scoring, cv=cv, n_iter=100)
+        #grid = GridSearchCV(self.models[model_algo][0], self.models[model_algo][1], scoring=scoring, cv=cv,n_jobs=5, verbose=2)
+
         model = grid.fit(self.X_train, self.y_train)
         self.model_save = model
-
-
         y_pred = grid.predict(self.X_test)
         print(classification_report(self.y_test, y_pred))
         return grid
 
 
+    def show_permences_model(self,dictionnaire):
+        import matplotlib.pyplot as plt
+        """data = {'Logistic Regression': acc_lr, 'KNN': acc_knn,
+                'Support Vector Classifier': acc_svc, 'Decision Tree Classifier': acc_dtc,
+                'Random Forest Classifier': acc_rf,
+                'Ada Boost Classifier': acc_adc, 'Extra Trees Classifier': acc_etc,
+                'Bagging Classifier': acc_bgc, 'Gradient Boosting Classifier': acc_gbc,
+                'XGBoost Classifier': acc_xgbc}"""
+
+        data = dict(sorted(dictionnaire.items(), key=lambda x: x[1], reverse=True))
+        models = list(data.keys())
+        score = list(data.values())
+        fig = plt.figure(figsize=(15, 10))
+        sns.barplot(x=score, y=models)
+        plt.xlabel("Models Utilisés", size=20)
+        plt.xticks(size=12)
+        plt.ylabel("Score", size=20)
+        plt.yticks(size=12)
+        plt.title("Score des modèles non optimisés ", size=25)
+        plt.show()
+
+
+    def importance_features(self):
+        model_rf = self.model_save.best_estimator_._final_estimator
+        X = self.X
+        print(X.columns.values)
+        #importances = model_rf.feature_importances_
+        coef = model_rf.coef_[0]
+        print(len(coef))
+        weights = pd.Series(coef[:8],
+                            index=X.columns.values)
+        print(weights.sort_values()[-10:].plot(kind='barh'))
+
+
     def executer(self):
         dico_models = self.evalModels()
-        self.compareModels(dico_models)
-        return dico_models
+        self.show_permences_model(dico_models)
+        result = self.compareModels(dico_models)
+
+        return dico_models,result
 
 
 class Scoring(RMFrammeClassification):
 
-    def __init__(self, listeModel,dataset):
-        super().__init__(listeModel,dataset)
+    def __init__(self, listeModel,dataset,target):
+        super().__init__(listeModel,dataset,target)
         self.dico_score = {}
 
     def scoring(self):
@@ -333,6 +372,19 @@ class Scoring(RMFrammeClassification):
         new_dataFrame['classe_affecter'] = classe
         self.new_dataFrame = new_dataFrame
         return new_dataFrame
+
+    def scoring_new_data(self,df):
+        #df_save = df
+        #df = df.drop(=)
+        model = self.model_save
+        resultat_scoring = model.predict_proba(df) * 100
+        classe = model.predict(df)
+        new_dataFrame = df
+        new_dataFrame['score_customer'] = resultat_scoring[:, 1]
+        new_dataFrame['class_customer'] = classe
+        new_dataFrame = new_dataFrame.sort_values(by = 'score_customer', ascending=False)
+        return new_dataFrame
+
 
     def save_model(self):
         model = self.model_save
@@ -363,7 +415,7 @@ if __name__ == "__main__":
 
     preprocessor.encodage_label()
 
-    preprocessor = preprocessor.pipeline_preprocessing()
+    preprocessor = preprocessor.pipelinePreprocessing()
 
     #print(preprocessor)
 
