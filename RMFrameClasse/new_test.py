@@ -3,12 +3,12 @@
 #from  RModelFramework import Scoring
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
-from RMFrameClasse.ressources.resources import *
+from RMFRAMEWORK.bibliotheque.RMFrameClasse.ressources.resources import *
 
-from RMFrameClasse.refractoryFramwork.importation import  DataImport
-from RMFrameClasse.refractoryFramwork.pretraitement import PreprocessingData
-from RMFrameClasse.refractoryFramwork.scoring import Scoring
-from RMFrameClasse.refractoryFramwork.classification import Classification
+from RMFRAMEWORK.bibliotheque.RMFrameClasse.refractoryFramwork.importation import  DataImport
+from RMFRAMEWORK.bibliotheque.RMFrameClasse.refractoryFramwork.pretraitement import PreprocessingData
+from RMFRAMEWORK.bibliotheque.RMFrameClasse.refractoryFramwork.scoring import Scoring
+from RMFRAMEWORK.bibliotheque.RMFrameClasse.refractoryFramwork.classification import Classification
 if __name__ == "__main__":
     #pd.set_option('display.max_columns', None)
 
@@ -16,13 +16,8 @@ if __name__ == "__main__":
     data.chargement()
     data.display_data(20)
 
-
-
-
-
     #target = 'Loan_Status'
     # dataset = data.delete_data_entry("Loan_ID",axis=1)
-
 
     target = "Churn"
     dataset = data.delete_data_entry("customerID", axis=1)

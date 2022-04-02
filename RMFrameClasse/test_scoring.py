@@ -1,12 +1,12 @@
 #from RModelFramework import DataImport
 #from RModelFramework import PreprocessingData
 #from  RModelFramework import Scoring
-from RMFrameClasse.ressources.resources import *
+from .ressources.resources import *
 
 
-from RMFrameClasse.refractoryFramwork.importation import  DataImport
-from RMFrameClasse.refractoryFramwork.pretraitement import PreprocessingData
-from RMFrameClasse.refractoryFramwork.scoring import Scoring
+from .refractoryFramwork.importation import  DataImport
+from .refractoryFramwork.pretraitement import PreprocessingData
+from .refractoryFramwork.scoring import Scoring
 
 if __name__ == "__main__":
     #pd.set_option('display.max_columns', None)

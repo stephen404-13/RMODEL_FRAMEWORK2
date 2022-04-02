@@ -22,11 +22,11 @@ class Classification(RMFrammeClassification):
         self.new_dataFrame = new_dataFrame
         return new_dataFrame"""
 
-    def do_classification(self):
-        data_users = self.dataFrame
+    def do_classification(self,df):
+        data_users = df
         model = self.model_save
         classe = model.predict(data_users)
-        new_dataFrame = self.dataFrame
+        new_dataFrame = data_users
         new_dataFrame['classe_affecter'] = classe
         self.new_dataFrame = new_dataFrame
         return new_dataFrame
